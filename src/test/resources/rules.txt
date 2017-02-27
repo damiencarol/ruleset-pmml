@@ -1,0 +1,24 @@
+RULE1: 
+        PREDICATE: BP="HIGH" AND K > 0.045804001 AND Age <= 50 AND Na <= 0.77240998
+        PREDICTION: drugB
+        Training/test measures:
+                recordCount     79
+                nbCorrect       76
+                confidence      0.9
+                weight          0.9
+RULE2:
+        PREDICATE: K > 0.057789002 AND BP="HIGH" AND Age <= 50
+        PREDICTION: drugA
+        Training/test measures:
+                recordCount     278
+                nbCorrect       168
+                confidence      0.6
+                weight          0.6
+RULE3:
+        PREDICATE: BP="HIGH" AND Na > 0.21
+        PREDICTION: drugA
+        Training/test measures:
+                recordCount     100
+                nbCorrect       50
+                confidence      0.36
+                weight          0.36
