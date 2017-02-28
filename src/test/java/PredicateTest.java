@@ -22,6 +22,7 @@ public class PredicateTest {
         	{ true, "PREDICATE : BP>3 " },
         	{ true, "PREDICATE : BP>3 AND var2 < 3 " },
         	{ true, "PREDICATE : BP=\"HIGH\" AND var2 < 3  " },
+        	{ true, "PREDICATE: BP=\"HIGH\" AND K > 0.045804001 AND Age <= 50 AND Na <= 0.77240998" },
             
         	/* Invalid rules. */
             { false, "crap crap crap" }, // no operator but 3 operands

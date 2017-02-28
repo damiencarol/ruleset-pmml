@@ -11,11 +11,12 @@ DIV   : '/' ;
 PLUS  : '+' ;
 MINUS : '-' ;
  
-GT : '>' ;
-GE : '>=' ;
-LT : '<' ;
-LE : '<=' ;
-EQ : '=' ;
+GT  : '>' ;
+GE  : '>=' ;
+LT  : '<' ;
+LE  : '<=' ;
+EQ  : '=' | '==' ;
+NE  : '<>' | '!=' ;
  
 LPAREN : '(' ;
 RPAREN : ')' ;
@@ -61,7 +62,7 @@ condition : logical_expr ;
 conclusion : IDENTIFIER ;
  
 logical_expr
- : logical_expr AND logical_expr # LogicalExpressionAnd
+ : logical_expr (AND logical_expr)+ # LogicalExpressionAnd
  | logical_expr OR logical_expr  # LogicalExpressionOr
  | comparison_expr               # ComparisonExpression
  | LPAREN logical_expr RPAREN    # LogicalExpressionInParen
@@ -76,11 +77,12 @@ comparison_operand : arithmetic_expr
                     | QUOTED_STRING
                    ;
  
-comp_operator : GT
-              | GE
-              | LT
-              | LE
-              | EQ
+comp_operator : EQ # OperatorEqual
+              | NE # OperatorNotEqual
+              | LT # OperatorLessThan
+              | LE # OperatorLessOrEqual
+              | GT # OperatorGreaterThan
+              | GE # OperatorGreaterOrEqual
               ;
 
 arithmetic_expr
