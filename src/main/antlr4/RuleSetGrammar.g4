@@ -35,12 +35,14 @@ COMMENT : '//' .+? ('\n'|EOF) -> skip ;
  
 WS : [ \r\t\u000C\n]+ -> skip ;
 
+fragment ESCAPED_QUOTE : '\\"';
+QUOTED_STRING :   '"' ( ESCAPED_QUOTE | ~('\n'|'\r') )*? '"';
 
 
 
 rule_set : single_rule* ;
- 
-single_rule : rule_identifier rule_predicate rule_prediction ;
+
+single_rule : rule_identifier rule_predicate rule_prediction train_test_measures?;
 
 rule_identifier : IDENTIFIER ':' ;
 rule_predicate : 'PREDICATE' ':'  logical_expr ;
@@ -48,7 +50,12 @@ rule_predicate : 'PREDICATE' ':'  logical_expr ;
 rule_prediction : 'PREDICTION' ':' logical_entity 
                 | 'PREDICTION' ':' numeric_entity;
 
-
+train_test_measures : 'Training/test measures' ':'
+             (  'recordCount'     DECIMAL )?
+             (  'nbCorrect'       DECIMAL )?
+             (  'confidence'      DECIMAL )?
+             (  'weight'          DECIMAL )?
+  ;
  
 condition : logical_expr ;
 conclusion : IDENTIFIER ;
@@ -61,12 +68,12 @@ logical_expr
  | logical_entity                # LogicalEntity
  ;
  
-comparison_expr : comparison_operand comp_operator comparison_operand
-                    # ComparisonExpressionWithOperator
+comparison_expr : comparison_operand comp_operator comparison_operand # ComparisonExpressionWithOperator
                 | LPAREN comparison_expr RPAREN # ComparisonExpressionParens
                 ;
  
 comparison_operand : arithmetic_expr
+                    | QUOTED_STRING
                    ;
  
 comp_operator : GT
@@ -75,7 +82,7 @@ comp_operator : GT
               | LE
               | EQ
               ;
- 
+
 arithmetic_expr
  : arithmetic_expr MULT arithmetic_expr  # ArithmeticExpressionMult
  | arithmetic_expr DIV arithmetic_expr   # ArithmeticExpressionDiv
@@ -88,6 +95,7 @@ arithmetic_expr
  
 logical_entity : (TRUE | FALSE) # LogicalConst
                | IDENTIFIER     # LogicalVariable
+               | QUOTED_STRING  # LogicalString
                ;
  
 numeric_entity : DECIMAL              # NumericConst

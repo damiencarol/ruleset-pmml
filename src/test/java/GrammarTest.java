@@ -20,6 +20,7 @@ public class GrammarTest {
         return Arrays.asList(new Object[][]{
         	{ true, "rule1 : PREDICATE : BP>3 PREDICTION : 1.0" },
         	{ true, "rule1 : PREDICATE : BP>3 AND var2 < 3  PREDICTION : 0.0 " },
+        	{ true, "rule1 : PREDICATE : BP=\"HIGH\" AND var2 < 3  PREDICTION : 0.0 " },
                 /* Valid rules. */
                 /*{ true, "if true then conclusion;" },
                 { true, "if false then conclusion;" },
