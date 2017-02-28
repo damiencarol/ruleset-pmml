@@ -112,7 +112,7 @@ public class GrammarTest {
         RuleSetGrammarParser parser = new RuleSetGrammarParser(tokens);
 
         parser.removeErrorListeners();
-        parser.setErrorHandler(new ExceptionThrowingErrorHandler());
+        //parser.setErrorHandler(new ExceptionThrowingErrorHandler());
 
         if (this.testValid) {
             ParserRuleContext ruleContext = parser.rule_set();
