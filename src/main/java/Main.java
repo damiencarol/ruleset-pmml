@@ -16,6 +16,10 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.dmg.pmml.CompoundPredicate;
 import org.dmg.pmml.CompoundPredicate.BooleanOperator;
 import org.dmg.pmml.FieldName;
+import org.dmg.pmml.MiningField;
+import org.dmg.pmml.MiningField.UsageType;
+import org.dmg.pmml.MiningFunction;
+import org.dmg.pmml.MiningSchema;
 import org.dmg.pmml.Model;
 import org.dmg.pmml.PMML;
 import org.dmg.pmml.Predicate;
@@ -69,9 +73,12 @@ public class Main {
 	}
 
 	private static Model createModelFromRuleContext(ParserRuleContext ruleContext) throws ConvertToPredicateException, ConvertToOperatorException {
+		ConvertContext context = new ConvertContext();
+		
 		RuleSet ruleSet = new RuleSet();
 		
 		RuleSetModel model = new RuleSetModel();
+		model.setMiningFunction(MiningFunction.CLASSIFICATION);
 		model.setRuleSet(ruleSet);
 		// For each rules
 		for (int i = 0; i < ruleContext.getChildCount(); i++) 
@@ -87,33 +94,43 @@ public class Main {
 			ParseTree pred = ruleContext.getChild(i).getChild(1);
 
 			// Convert
-			Predicate predicate = convertToPredicate((RuleSetGrammarParser.Logical_exprContext)pred.getChild(2));
+			Predicate predicate = convertToPredicate(context, (RuleSetGrammarParser.Logical_exprContext)pred.getChild(2));
 			rule.setPredicate(predicate);
 		}
+		
+		MiningSchema miningSchema = new MiningSchema();
+		for (FieldName name : context.getFields().values()) {
+			miningSchema.addMiningFields(new MiningField(name));
+		}
+		MiningField target = new MiningField(context.getField("target"));
+		target.setUsageType(UsageType.TARGET);
+		miningSchema.addMiningFields(target); // add special var
+		// Add field afterward
+		model.setMiningSchema(miningSchema );
 		
 		return model;
 	}
 
-	private static Predicate convertToPredicate(ParseTree parseTree) throws ConvertToPredicateException, ConvertToOperatorException {
+	private static Predicate convertToPredicate(ConvertContext context, ParseTree parseTree) throws ConvertToPredicateException, ConvertToOperatorException {
 		if (parseTree instanceof RuleSetGrammarParser.LogicalExpressionAndContext) {
 			RuleSetGrammarParser.LogicalExpressionAndContext andExpre = (RuleSetGrammarParser.LogicalExpressionAndContext)parseTree;
 			CompoundPredicate predicate = new CompoundPredicate(BooleanOperator.AND);
 			// add left and right
-			predicate.addPredicates(convertToPredicate(andExpre.getChild(0)));
-			predicate.addPredicates(convertToPredicate(andExpre.getChild(2)));
+			predicate.addPredicates(convertToPredicate(context, andExpre.getChild(0)));
+			predicate.addPredicates(convertToPredicate(context, andExpre.getChild(2)));
 			return predicate;
 		}
 		
 		// ComparisonExpressionContext
 		else if (parseTree instanceof RuleSetGrammarParser.ComparisonExpressionContext) {
 			// There are only two cases that we can convert
-			return convertToPredicate(parseTree.getChild(0));
+			return convertToPredicate(context, parseTree.getChild(0));
 		}
 		
 		// ComparisonExpressionWithOperatorContext
 		else if (parseTree instanceof RuleSetGrammarParser.ComparisonExpressionWithOperatorContext) {
 			SimplePredicate predicate = new SimplePredicate();
-			predicate.setField(new FieldName(parseTree.getChild(0).getText()));
+			predicate.setField(context.getField(parseTree.getChild(0).getText()));
 			predicate.setOperator(convertToOperator(parseTree.getChild(1)));
 			predicate.setValue(parseTree.getChild(2).getText());
 			return predicate;
