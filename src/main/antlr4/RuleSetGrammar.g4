@@ -73,8 +73,8 @@ comparison_expr : comparison_operand comp_operator comparison_operand # Comparis
                 | LPAREN comparison_expr RPAREN # ComparisonExpressionParens
                 ;
  
-comparison_operand : arithmetic_expr
-                    | QUOTED_STRING
+comparison_operand : arithmetic_expr  # ComparisonOperandExpr
+                   | QUOTED_STRING    # ComparisonOperandString
                    ;
  
 comp_operator : EQ # OperatorEqual

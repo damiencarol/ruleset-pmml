@@ -1,6 +1,7 @@
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -19,6 +20,7 @@ import org.dmg.pmml.DataDictionary;
 import org.dmg.pmml.DataField;
 import org.dmg.pmml.DataType;
 import org.dmg.pmml.FieldName;
+import org.dmg.pmml.Header;
 import org.dmg.pmml.MiningField;
 import org.dmg.pmml.MiningField.UsageType;
 import org.dmg.pmml.MiningFunction;
@@ -29,14 +31,18 @@ import org.dmg.pmml.PMML;
 import org.dmg.pmml.Predicate;
 import org.dmg.pmml.SimplePredicate;
 import org.dmg.pmml.SimplePredicate.Operator;
+import org.dmg.pmml.Timestamp;
 import org.dmg.pmml.rule_set.Rule;
+import org.dmg.pmml.rule_set.RuleSelectionMethod;
 import org.dmg.pmml.rule_set.RuleSet;
 import org.dmg.pmml.rule_set.RuleSetModel;
 import org.dmg.pmml.rule_set.SimpleRule;
+import org.dmg.pmml.rule_set.RuleSelectionMethod.Criterion;
+import org.jpmml.model.PMMLUtil;
 
 public class Main {
 
-	public static void main(String[] args) throws JAXBException, IOException, ConvertToPredicateException, ConvertToOperatorException {
+	public static void main(String[] args) throws JAXBException, IOException, ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException {
 		// Read the file from parameters
 		InputStream inputStream = new FileInputStream(new File(args[0]));
 		
@@ -65,22 +71,25 @@ public class Main {
         
         PMML pmml = createModelFromRuleContext(ruleContext);
         
-        // create JAXB context and instantiate marshaller
-        JAXBContext context = JAXBContext.newInstance(PMML.class);
-        Marshaller m = context.createMarshaller();
-        m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-
-        // Write to System.out
-        m.marshal(pmml, System.out);
-
+        PMMLUtil.marshal(pmml, new FileOutputStream("bootstrap/res.xml"));
 	}
 
-	private static PMML createModelFromRuleContext(ParserRuleContext ruleContext) throws ConvertToPredicateException, ConvertToOperatorException {
+	private static PMML createModelFromRuleContext(ParserRuleContext ruleContext) throws ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException {
 		  PMML pmml = new PMML();
+		  pmml.setVersion("4.3");
+		  
+		  // Add header
+		  Header header = new Header();
+		  header.setTimestamp(new Timestamp());
+		  pmml.setHeader(header);
 		
 		ConvertContext context = new ConvertContext();
 		
 		RuleSet ruleSet = new RuleSet();
+		
+		// Add first hit by default
+		RuleSelectionMethod ruleSelectionMethod = new RuleSelectionMethod(Criterion.FIRST_HIT);
+		ruleSet.addRuleSelectionMethods(ruleSelectionMethod);
 		
 		RuleSetModel model = new RuleSetModel();
 		model.setMiningFunction(MiningFunction.CLASSIFICATION);
@@ -90,10 +99,13 @@ public class Main {
 		{
 			
 			// Build rule
-			Rule rule = new SimpleRule();
+			SimpleRule rule = new SimpleRule();
 			String id = ruleContext.getChild(i).getChild(0).getChild(0).getText();
 			rule.setId(id);
 			model.getRuleSet().addRules(rule);
+			
+			// declare result
+			rule.setScore(ruleContext.getChild(i).getChild(2).getChild(2).getText());
 			
 			// Add predicate
 			ParseTree pred = ruleContext.getChild(i).getChild(1);
@@ -102,7 +114,12 @@ public class Main {
 			Predicate predicate = convertToPredicate(context, (RuleSetGrammarParser.Logical_exprContext)pred.getChild(2));
 			rule.setPredicate(predicate);
 		}
-		
+		// By default set the default to the first score
+		if (ruleSet.getRules().size()>0 && ruleSet.getRules().get(0) instanceof SimpleRule) {
+			ruleSet.setDefaultScore(
+					((SimpleRule)ruleSet.getRules().get(0)).getScore()
+					);
+		}
 		
 		
 		
@@ -119,12 +136,20 @@ public class Main {
 	private static void addDataDictionnary(ConvertContext context, PMML pmml) {
 		DataDictionary dataDictionary = new DataDictionary();
 		for (FieldName name : context.getFields().values()) {
-			dataDictionary.addDataFields(new DataField(name, OpType.CONTINUOUS, DataType.DOUBLE));
+			DataField dataField = new DataField(name, OpType.CONTINUOUS, DataType.DOUBLE);
+			dataField.setDataType(context.getFieldType(name.getValue()));
+			dataDictionary.addDataFields(dataField );
 		}
-		//MiningField target = new MiningField(context.getField("target"));
-		//target.setUsageType(UsageType.TARGET);
-		//miningSchema.addMiningFields(target); // add special var
+
+		//DataField dataFieldTarget = new DataField("target", OpType.CONTINUOUS, DataType.STRING);
 		
+		// Add target
+		DataField targetDataField = new DataField(
+				new FieldName(context.getTargetVarName()), 
+				context.getTargetOpType(),
+				context.getTargetDataType());
+		dataDictionary.addDataFields(targetDataField);
+
 		// Add field afterward
 		pmml.setDataDictionary(dataDictionary);
 	}
@@ -132,16 +157,20 @@ public class Main {
 	private static void addMiningField(ConvertContext context, RuleSetModel model) {
 		MiningSchema miningSchema = new MiningSchema();
 		for (FieldName name : context.getFields().values()) {
-			miningSchema.addMiningFields(new MiningField(name));
+			MiningField miningField = new MiningField(name);
+			miningSchema.addMiningFields(miningField);
 		}
-		MiningField target = new MiningField(context.getField("target"));
+		
+		// Add target
+		MiningField target = new MiningField(new FieldName(context.getTargetVarName()));
 		target.setUsageType(UsageType.TARGET);
 		miningSchema.addMiningFields(target); // add special var
+
 		// Add field afterward
-		model.setMiningSchema(miningSchema );
+		model.setMiningSchema(miningSchema);
 	}
 
-	private static Predicate convertToPredicate(ConvertContext context, ParseTree parseTree) throws ConvertToPredicateException, ConvertToOperatorException {
+	private static Predicate convertToPredicate(ConvertContext context, ParseTree parseTree) throws ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException {
 		if (parseTree instanceof RuleSetGrammarParser.LogicalExpressionAndContext) {
 			RuleSetGrammarParser.LogicalExpressionAndContext andExpre = (RuleSetGrammarParser.LogicalExpressionAndContext)parseTree;
 			CompoundPredicate predicate = new CompoundPredicate(BooleanOperator.AND);
@@ -160,9 +189,22 @@ public class Main {
 		// ComparisonExpressionWithOperatorContext
 		else if (parseTree instanceof RuleSetGrammarParser.ComparisonExpressionWithOperatorContext) {
 			SimplePredicate predicate = new SimplePredicate();
-			predicate.setField(context.getField(parseTree.getChild(0).getText()));
+			String key = parseTree.getChild(0).getText();
+			
+			predicate.setField(context.getField(key));
 			predicate.setOperator(convertToOperator(parseTree.getChild(1)));
-			predicate.setValue(parseTree.getChild(2).getText());
+			
+			// Check if it's a string
+			//System.out.println(parseTree.getChild(2).getClass().getName());
+			if (parseTree.getChild(2) instanceof RuleSetGrammarParser.ComparisonOperandStringContext) {
+				context.setFieldType(key, DataType.STRING);
+				String val = parseTree.getChild(2).getText().substring(1);
+				predicate.setValue(val.substring(0, val.length()-1));
+			} else if (parseTree.getChild(2) instanceof RuleSetGrammarParser.ComparisonOperandExprContext) {
+				context.setFieldType(key, DataType.DOUBLE);
+				predicate.setValue(parseTree.getChild(2).getText());
+			}
+			
 			return predicate;
 		}
 		
