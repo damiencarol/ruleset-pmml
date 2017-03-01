@@ -15,12 +15,16 @@ import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.dmg.pmml.CompoundPredicate;
 import org.dmg.pmml.CompoundPredicate.BooleanOperator;
+import org.dmg.pmml.DataDictionary;
+import org.dmg.pmml.DataField;
+import org.dmg.pmml.DataType;
 import org.dmg.pmml.FieldName;
 import org.dmg.pmml.MiningField;
 import org.dmg.pmml.MiningField.UsageType;
 import org.dmg.pmml.MiningFunction;
 import org.dmg.pmml.MiningSchema;
 import org.dmg.pmml.Model;
+import org.dmg.pmml.OpType;
 import org.dmg.pmml.PMML;
 import org.dmg.pmml.Predicate;
 import org.dmg.pmml.SimplePredicate;
@@ -59,8 +63,7 @@ public class Main {
         
         
         
-        PMML pmml = new PMML();
-		pmml.addModels(createModelFromRuleContext(ruleContext));
+        PMML pmml = createModelFromRuleContext(ruleContext);
         
         // create JAXB context and instantiate marshaller
         JAXBContext context = JAXBContext.newInstance(PMML.class);
@@ -72,7 +75,9 @@ public class Main {
 
 	}
 
-	private static Model createModelFromRuleContext(ParserRuleContext ruleContext) throws ConvertToPredicateException, ConvertToOperatorException {
+	private static PMML createModelFromRuleContext(ParserRuleContext ruleContext) throws ConvertToPredicateException, ConvertToOperatorException {
+		  PMML pmml = new PMML();
+		
 		ConvertContext context = new ConvertContext();
 		
 		RuleSet ruleSet = new RuleSet();
@@ -98,6 +103,33 @@ public class Main {
 			rule.setPredicate(predicate);
 		}
 		
+		
+		
+		
+		addMiningField(context, model);
+		
+		addDataDictionnary(context, pmml);
+		
+
+		pmml.addModels(model);
+		
+		return pmml;
+	}
+	
+	private static void addDataDictionnary(ConvertContext context, PMML pmml) {
+		DataDictionary dataDictionary = new DataDictionary();
+		for (FieldName name : context.getFields().values()) {
+			dataDictionary.addDataFields(new DataField(name, OpType.CONTINUOUS, DataType.DOUBLE));
+		}
+		//MiningField target = new MiningField(context.getField("target"));
+		//target.setUsageType(UsageType.TARGET);
+		//miningSchema.addMiningFields(target); // add special var
+		
+		// Add field afterward
+		pmml.setDataDictionary(dataDictionary);
+	}
+
+	private static void addMiningField(ConvertContext context, RuleSetModel model) {
 		MiningSchema miningSchema = new MiningSchema();
 		for (FieldName name : context.getFields().values()) {
 			miningSchema.addMiningFields(new MiningField(name));
@@ -107,8 +139,6 @@ public class Main {
 		miningSchema.addMiningFields(target); // add special var
 		// Add field afterward
 		model.setMiningSchema(miningSchema );
-		
-		return model;
 	}
 
 	private static Predicate convertToPredicate(ConvertContext context, ParseTree parseTree) throws ConvertToPredicateException, ConvertToOperatorException {
