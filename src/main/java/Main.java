@@ -1,9 +1,11 @@
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -20,25 +22,22 @@ import org.dmg.pmml.DataDictionary;
 import org.dmg.pmml.DataField;
 import org.dmg.pmml.DataType;
 import org.dmg.pmml.FieldName;
+import org.dmg.pmml.FieldUsageType;
 import org.dmg.pmml.Header;
 import org.dmg.pmml.MiningField;
-import org.dmg.pmml.MiningField.UsageType;
-import org.dmg.pmml.MiningFunction;
+import org.dmg.pmml.MiningFunctionType;
 import org.dmg.pmml.MiningSchema;
-import org.dmg.pmml.Model;
 import org.dmg.pmml.OpType;
 import org.dmg.pmml.PMML;
 import org.dmg.pmml.Predicate;
+import org.dmg.pmml.RuleSelectionMethod;
+import org.dmg.pmml.RuleSelectionMethod.Criterion;
+import org.dmg.pmml.RuleSet;
+import org.dmg.pmml.RuleSetModel;
 import org.dmg.pmml.SimplePredicate;
 import org.dmg.pmml.SimplePredicate.Operator;
+import org.dmg.pmml.SimpleRule;
 import org.dmg.pmml.Timestamp;
-import org.dmg.pmml.rule_set.Rule;
-import org.dmg.pmml.rule_set.RuleSelectionMethod;
-import org.dmg.pmml.rule_set.RuleSet;
-import org.dmg.pmml.rule_set.RuleSetModel;
-import org.dmg.pmml.rule_set.SimpleRule;
-import org.dmg.pmml.rule_set.RuleSelectionMethod.Criterion;
-import org.jpmml.model.PMMLUtil;
 
 public class Main {
 
@@ -70,17 +69,23 @@ public class Main {
         
         
         PMML pmml = createModelFromRuleContext(ruleContext);
-        
-        PMMLUtil.marshal(pmml, new FileOutputStream("bootstrap/res.xml"));
+
+        // create JAXB context and instantiate marshaller
+        JAXBContext context = JAXBContext.newInstance(PMML.class);
+        Marshaller m = context.createMarshaller();
+        m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+
+        // Write to System.out
+        m.marshal(pmml, System.out);
 	}
 
 	private static PMML createModelFromRuleContext(ParserRuleContext ruleContext) throws ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException {
 		  PMML pmml = new PMML();
-		  pmml.setVersion("4.3");
+		  pmml.setVersion("4.2");
 		  
 		  // Add header
 		  Header header = new Header();
-		  header.setTimestamp(new Timestamp());
+		  addTimestampNow(header);
 		  pmml.setHeader(header);
 		
 		ConvertContext context = new ConvertContext();
@@ -92,7 +97,9 @@ public class Main {
 		ruleSet.addRuleSelectionMethods(ruleSelectionMethod);
 		
 		RuleSetModel model = new RuleSetModel();
-		model.setMiningFunction(MiningFunction.CLASSIFICATION);
+		// FIXME change for 4.2/4.3
+		//model.setMiningFunction(MiningFunction.CLASSIFICATION);
+		model.setFunctionName(MiningFunctionType.CLASSIFICATION);
 		model.setRuleSet(ruleSet);
 		// For each rules
 		for (int i = 0; i < ruleContext.getChildCount(); i++) 
@@ -120,9 +127,9 @@ public class Main {
 					((SimpleRule)ruleSet.getRules().get(0)).getScore()
 					);
 		}
-		
-		
-		
+
+
+
 		addMiningField(context, model);
 		
 		addDataDictionnary(context, pmml);
@@ -131,6 +138,14 @@ public class Main {
 		pmml.addModels(model);
 		
 		return pmml;
+	}
+
+	private static void addTimestampNow(Header header) {
+		Timestamp timestamp = new Timestamp();
+		  SimpleDateFormat ISO8601DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US);
+		  Date now = new Date(System.currentTimeMillis());
+		  timestamp.addContent(ISO8601DATEFORMAT.format(now));
+		header.setTimestamp(timestamp );
 	}
 	
 	private static void addDataDictionnary(ConvertContext context, PMML pmml) {
@@ -163,7 +178,7 @@ public class Main {
 		
 		// Add target
 		MiningField target = new MiningField(new FieldName(context.getTargetVarName()));
-		target.setUsageType(UsageType.TARGET);
+		target.setUsageType(FieldUsageType.TARGET);
 		miningSchema.addMiningFields(target); // add special var
 
 		// Add field afterward
