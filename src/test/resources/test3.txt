@@ -1,0 +1,4 @@
+RULE1: 
+        PREDICATE: true
+        PREDICTION: "drugB" 
+        CONFIDENCE: 0.9

@@ -1,0 +1,4 @@
+RULE1: 
+        PREDICATE: (BP="HIGH" AND K > 0.045804001) OR (Age <= 50 AND Na <= 0.77240998)
+        PREDICTION: "drugB" 
+        CONFIDENCE: 0.9

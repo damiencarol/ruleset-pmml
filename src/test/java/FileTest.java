@@ -22,6 +22,8 @@ public class FileTest {
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
         	{ true, "rules.txt" },
+        	{ true, "test2.txt" },
+        	{ true, "test3.txt" },
         });
     }
 
