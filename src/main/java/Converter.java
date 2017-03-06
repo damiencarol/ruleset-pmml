@@ -223,7 +223,10 @@ public class Converter {
 		else if (parseTree instanceof RuleSetGrammarParser.LogicalExpressionInParenContext) {
 			return convertToPredicate(context, parseTree.getChild(1));
 		}
-
+		// paren 2
+		else if (parseTree instanceof RuleSetGrammarParser.ComparisonExpressionParensContext) {
+			return convertToPredicate(context, parseTree.getChild(1));
+		}
 		throw new ConvertToPredicateException();
 	}
 
