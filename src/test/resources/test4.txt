@@ -1,0 +1,8 @@
+RULE4:
+        PREDICATE: True and ((BP="HIGH" AND Na <> 0.21) OR False)
+        PREDICTION: drugA
+        Training/test measures:
+                recordCount     100
+                nbCorrect       50
+                confidence      0.36
+                weight          0.36

@@ -3,6 +3,7 @@ import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.TokenStream;
+import org.dmg.pmml.PMML;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -17,7 +18,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 @RunWith(Parameterized.class)
-public class FileTest {
+public class ConvertTest {
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
@@ -31,13 +32,14 @@ public class FileTest {
     private final boolean testValid;
     private final String testString;
 
-    public FileTest(boolean testValid, String testString) {
+    public ConvertTest(boolean testValid, String testString) {
         this.testValid = testValid;
         this.testString = testString;
     }
 
     @Test
-    public void testRule() throws IOException {
+    public void testRule() throws IOException, ConvertToPredicateException, 
+    ConvertToOperatorException, DataTypeConsistencyException {
     	InputStream inputFile = getClass().getResourceAsStream(this.testString);
     	
         ANTLRInputStream input = new ANTLRInputStream(inputFile);
@@ -56,7 +58,8 @@ public class FileTest {
             try {
                 ParserRuleContext ruleContext = parser.rule_set();
                 fail("Failed on \"" + this.testString + "\"");
-                assertNotNull(ruleContext);
+                PMML pmml = Converter.createModelFromRuleContext(ruleContext);
+                assertNotNull(pmml);
             } catch (RuntimeException e) {
                 // deliberately do nothing
             }

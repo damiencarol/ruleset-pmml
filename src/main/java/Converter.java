@@ -42,40 +42,68 @@ import org.dmg.pmml.SimpleRule;
 import org.dmg.pmml.Timestamp;
 import org.dmg.pmml.True;
 
-public class Main {
+public class Converter {
 
 	private static final String PMML_VERSION = "4.2";
 	private static final String APPLICATION_VERSION = "1.0";
 	private static final String APPLICATION_NAME = "RulesetPmml";
 
-	public static void main(String[] args) throws JAXBException, IOException, ConvertToPredicateException,
-			ConvertToOperatorException, DataTypeConsistencyException {
-		// Read the file from parameters
-		InputStream inputStream = new FileInputStream(new File(args[0]));
+	public static PMML createModelFromRuleContext(ParserRuleContext ruleContext)
+			throws ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException {
+		PMML pmml = new PMML();
+		pmml.setVersion(PMML_VERSION);
 
-		// Parse
-		ANTLRInputStream input = new ANTLRInputStream(inputStream);
-		RuleSetGrammarLexer lexer = new RuleSetGrammarLexer(input);
-		TokenStream tokens = new CommonTokenStream(lexer);
+		// Add header
+		Header header = new Header();
+		addTimestampNow(header);
+		addApplication(header);
+		pmml.setHeader(header);
 
-		RuleSetGrammarParser parser = new RuleSetGrammarParser(tokens);
-		// parser.removeErrorListeners();
-		// parser.setErrorHandler(new ExceptionThrowingErrorHandler());
-		ParserRuleContext ruleContext = parser.rule_set();
-		// show AST in console
-		// System.out.println(parser.rule_set().toStringTree(parser));
-		
-		
+		ConvertContext context = new ConvertContext();
 
-		PMML pmml = Converter.createModelFromRuleContext(ruleContext);
+		RuleSet ruleSet = new RuleSet();
 
-		// create JAXB context and instantiate marshaller
-		JAXBContext context = JAXBContext.newInstance(PMML.class);
-		Marshaller m = context.createMarshaller();
-		m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+		// Add first hit by default
+		RuleSelectionMethod ruleSelectionMethod = new RuleSelectionMethod(Criterion.FIRST_HIT);
+		ruleSet.addRuleSelectionMethods(ruleSelectionMethod);
 
-		// Write to System.out
-		m.marshal(pmml, System.out);
+		RuleSetModel model = new RuleSetModel();
+		// FIXME change for 4.2/4.3
+		// model.setMiningFunction(MiningFunction.CLASSIFICATION);
+		model.setFunctionName(MiningFunctionType.CLASSIFICATION);
+		model.setRuleSet(ruleSet);
+		// For each rules
+		for (int i = 0; i < ruleContext.getChildCount(); i++) {
+
+			// Build rule
+			SimpleRule rule = new SimpleRule();
+			String id = ruleContext.getChild(i).getChild(0).getChild(0).getText();
+			rule.setId(id);
+			model.getRuleSet().addRules(rule);
+
+			// declare result
+			rule.setScore(ruleContext.getChild(i).getChild(2).getChild(2).getText());
+
+			// Add predicate
+			ParseTree pred = ruleContext.getChild(i).getChild(1);
+
+			// Convert
+			Predicate predicate = convertToPredicate(context,
+					(RuleSetGrammarParser.Logical_exprContext) pred.getChild(2));
+			rule.setPredicate(predicate);
+		}
+		// By default set the default to the first score
+		if (ruleSet.getRules().size() > 0 && ruleSet.getRules().get(0) instanceof SimpleRule) {
+			ruleSet.setDefaultScore(((SimpleRule) ruleSet.getRules().get(0)).getScore());
+		}
+
+		addMiningField(context, model);
+
+		addDataDictionnary(context, pmml);
+
+		pmml.addModels(model);
+
+		return pmml;
 	}
 
 	private static void addApplication(Header header) {

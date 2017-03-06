@@ -1,23 +1,23 @@
 grammar RuleSetGrammar;
 
 AND : 'and' | 'AND' ;
-OR  : 'or' ;
- 
-TRUE  : 'true' ;
-FALSE : 'false' ;
- 
+OR  : 'or' | 'OR' ;
+
+TRUE  : 'true' | 'True' | 'TRUE' ;
+FALSE : 'false' | 'False' | 'FALSE' ;
+
 MULT  : '*' ;
 DIV   : '/' ;
 PLUS  : '+' ;
 MINUS : '-' ;
- 
+
 GT  : '>' ;
 GE  : '>=' ;
 LT  : '<' ;
 LE  : '<=' ;
 EQ  : '=' | '==' ;
 NE  : '<>' | '!=' ;
- 
+
 LPAREN : '(' ;
 RPAREN : ')' ;
  
@@ -94,8 +94,9 @@ arithmetic_expr
  | LPAREN arithmetic_expr RPAREN         # ArithmeticExpressionParens
  | numeric_entity                        # ArithmeticExpressionNumericEntity
  ;
- 
-logical_entity : (TRUE | FALSE) # LogicalConst
+
+logical_entity : TRUE           # LogicalTrueConst
+               | FALSE          # LogicalFalseConst
                | IDENTIFIER     # LogicalVariable
                | QUOTED_STRING  # LogicalString
                ;
