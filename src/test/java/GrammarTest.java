@@ -115,11 +115,11 @@ public class GrammarTest {
         //parser.setErrorHandler(new ExceptionThrowingErrorHandler());
 
         if (this.testValid) {
-            ParserRuleContext ruleContext = parser.rule_set();
+            ParserRuleContext ruleContext = parser.ruleSet();
             assertNull(ruleContext.exception);
         } else {
             try {
-                ParserRuleContext ruleContext = parser.rule_set();
+                parser.ruleSet();
                 fail("Failed on \"" + this.testString + "\"");
             } catch (RuntimeException e) {
                 // deliberately do nothing

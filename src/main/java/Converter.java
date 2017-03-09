@@ -1,20 +1,14 @@
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.dmg.pmml.Application;
 import org.dmg.pmml.CompoundPredicate;
@@ -22,10 +16,12 @@ import org.dmg.pmml.CompoundPredicate.BooleanOperator;
 import org.dmg.pmml.DataDictionary;
 import org.dmg.pmml.DataField;
 import org.dmg.pmml.DataType;
+import org.dmg.pmml.Extension;
 import org.dmg.pmml.False;
 import org.dmg.pmml.FieldName;
 import org.dmg.pmml.FieldUsageType;
 import org.dmg.pmml.Header;
+import org.dmg.pmml.MiningBuildTask;
 import org.dmg.pmml.MiningField;
 import org.dmg.pmml.MiningFunctionType;
 import org.dmg.pmml.MiningSchema;
@@ -49,7 +45,12 @@ public class Converter {
 	private static final String APPLICATION_NAME = "RulesetPmml";
 
 	public static PMML createModelFromRuleContext(ParserRuleContext ruleContext)
-			throws ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException {
+			throws ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException, IOException {
+		return createModelFromRuleContext(ruleContext, null);
+	}
+
+	public static PMML createModelFromRuleContext(ParserRuleContext ruleContext, String path)
+			throws ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException, IOException {
 		PMML pmml = new PMML();
 		pmml.setVersion(PMML_VERSION);
 
@@ -58,6 +59,11 @@ public class Converter {
 		addTimestampNow(header);
 		addApplication(header);
 		pmml.setHeader(header);
+
+		// MiningBuildTask
+		if (path != null) {
+			addMiningBuildTask(pmml, path);
+		}
 
 		ConvertContext context = new ConvertContext();
 
@@ -104,6 +110,23 @@ public class Converter {
 		pmml.addModels(model);
 
 		return pmml;
+	}
+
+	static String readFile(String path, Charset encoding) throws IOException {
+		byte[] encoded = Files.readAllBytes(Paths.get(path));
+		return new String(encoded, encoding);
+	}
+
+	private static void addMiningBuildTask(PMML pmml, String path) throws IOException {
+		MiningBuildTask miningBuildTask = new MiningBuildTask();
+
+		Extension extension = new Extension();
+
+		extension.addContent(readFile(path, StandardCharsets.UTF_8));
+
+		miningBuildTask.addExtensions(extension);
+
+		pmml.setMiningBuildTask(miningBuildTask);
 	}
 
 	private static void addApplication(Header header) {
@@ -195,7 +218,7 @@ public class Converter {
 
 			return predicate;
 		}
-		
+
 		else if (parseTree instanceof RuleSetGrammarParser.LogicalEntityContext) {
 			ParseTree child = parseTree.getChild(0);
 			if (child instanceof RuleSetGrammarParser.LogicalTrueConstContext) {
@@ -205,20 +228,20 @@ public class Converter {
 			}
 			throw new ConvertToPredicateException();
 		}
-		
+
 		// OR
 		else if (parseTree instanceof RuleSetGrammarParser.LogicalExpressionOrContext) {
 			ParseTree childLeft = parseTree.getChild(0);
 			ParseTree childRight = parseTree.getChild(2);
-			
+
 			CompoundPredicate predicate = new CompoundPredicate();
 			predicate.setBooleanOperator(BooleanOperator.OR);
 			predicate.addPredicates(convertToPredicate(context, childLeft));
 			predicate.addPredicates(convertToPredicate(context, childRight));
-			
+
 			return predicate;
 		}
-		
+
 		// paren
 		else if (parseTree instanceof RuleSetGrammarParser.LogicalExpressionInParenContext) {
 			return convertToPredicate(context, parseTree.getChild(1));

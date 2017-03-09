@@ -41,7 +41,7 @@ QUOTED_STRING :   '"' ( ESCAPED_QUOTE | ~('\n'|'\r') )*? '"';
 
 
 
-rule_set : single_rule* ;
+ruleSet : single_rule* ;
 
 single_rule : rule_identifier rule_predicate rule_prediction train_test_measures?;
 
@@ -51,11 +51,11 @@ rule_predicate : 'PREDICATE' ':'  logical_expr ;
 rule_prediction : 'PREDICTION' ':' logical_entity 
                 | 'PREDICTION' ':' numeric_entity;
 
-train_test_measures : 'Training/test measures' ':'
+train_test_measures : 'Training/test measures' ':' 
              (  'recordCount'     DECIMAL )?
              (  'nbCorrect'       DECIMAL )?
              (  'confidence'      DECIMAL )?
-             (  'weight'          DECIMAL )?
+             (  'weight'          DECIMAL )? 
   ;
  
 condition : logical_expr ;

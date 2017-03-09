@@ -52,11 +52,11 @@ public class ConvertTest {
         //parser.setErrorHandler(new ExceptionThrowingErrorHandler());
 
         if (this.testValid) {
-            ParserRuleContext ruleContext = parser.rule_set();
+            ParserRuleContext ruleContext = parser.ruleSet();
             assertNull(ruleContext.exception);
         } else {
             try {
-                ParserRuleContext ruleContext = parser.rule_set();
+                ParserRuleContext ruleContext = parser.ruleSet();
                 fail("Failed on \"" + this.testString + "\"");
                 PMML pmml = Converter.createModelFromRuleContext(ruleContext);
                 assertNotNull(pmml);

@@ -55,7 +55,7 @@ public class PredicateTest {
             assertNull(ruleContext.exception);
         } else {
             try {
-                ParserRuleContext ruleContext = parser.rule_predicate();
+                parser.rule_predicate();
                 fail("Failed on \"" + this.testString + "\"");
             } catch (RuntimeException e) {
                 // deliberately do nothing
