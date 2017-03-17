@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.TokenStream;
 import org.dmg.pmml.PMML;
+import org.dmg.pmml.RuleSelectionMethod.Criterion;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -58,7 +59,7 @@ public class ConvertTest {
             try {
                 ParserRuleContext ruleContext = parser.ruleSet();
                 fail("Failed on \"" + this.testString + "\"");
-                PMML pmml = Converter.createModelFromRuleContext(ruleContext);
+                PMML pmml = Converter.createModelFromRuleContext(ruleContext, Criterion.FIRST_HIT, "0.0");
                 assertNotNull(pmml);
             } catch (RuntimeException e) {
                 // deliberately do nothing

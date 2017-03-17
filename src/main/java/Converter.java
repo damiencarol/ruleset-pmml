@@ -44,12 +44,12 @@ public class Converter {
 	private static final String APPLICATION_VERSION = "1.0";
 	private static final String APPLICATION_NAME = "RulesetPmml";
 
-	public static PMML createModelFromRuleContext(ParserRuleContext ruleContext)
+	public static PMML createModelFromRuleContext(ParserRuleContext ruleContext, Criterion ruleSelectionMethodCriterion, String defaultscore)
 			throws ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException, IOException {
-		return createModelFromRuleContext(ruleContext, null);
+		return createModelFromRuleContext(ruleContext, null, ruleSelectionMethodCriterion, defaultscore);
 	}
 
-	public static PMML createModelFromRuleContext(ParserRuleContext ruleContext, String path)
+	public static PMML createModelFromRuleContext(ParserRuleContext ruleContext, String path, Criterion ruleSelectionMethodCriterion, String defaultScore)
 			throws ConvertToPredicateException, ConvertToOperatorException, DataTypeConsistencyException, IOException {
 		PMML pmml = new PMML();
 		pmml.setVersion(PMML_VERSION);
@@ -68,9 +68,8 @@ public class Converter {
 		ConvertContext context = new ConvertContext();
 
 		RuleSet ruleSet = new RuleSet();
-
-		// Add first hit by default
-		RuleSelectionMethod ruleSelectionMethod = new RuleSelectionMethod(Criterion.FIRST_HIT);
+		RuleSelectionMethod ruleSelectionMethod = new RuleSelectionMethod();
+		ruleSelectionMethod.setCriterion(ruleSelectionMethodCriterion);
 		ruleSet.addRuleSelectionMethods(ruleSelectionMethod);
 
 		RuleSetModel model = new RuleSetModel();
@@ -98,10 +97,8 @@ public class Converter {
 					(RuleSetGrammarParser.Logical_exprContext) pred.getChild(2));
 			rule.setPredicate(predicate);
 		}
-		// By default set the default to the first score
-		if (ruleSet.getRules().size() > 0 && ruleSet.getRules().get(0) instanceof SimpleRule) {
-			ruleSet.setDefaultScore(((SimpleRule) ruleSet.getRules().get(0)).getScore());
-		}
+		// Set the default score
+		ruleSet.setDefaultScore(defaultScore);
 
 		addMiningField(context, model);
 
